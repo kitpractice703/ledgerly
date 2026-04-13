@@ -36,3 +36,46 @@
 
 ### ✅ 입구 컷 데이터 검증 (Fail-Fast)
 - DTO와 `@Valid`, `BindingResult`를 활용하여 띄어쓰기 공백(`" "`) 같은 비정상적인 데이터가 DB에 도달하기 전 컨트롤러 단에서 즉시 차단하도록 설계했습니다.
+
+## 4. 데이터베이스 구조 (ERD)
+
+```mermaid
+erDiagram
+    USER ||--o{ TRANSACTION : "작성"
+    USER ||--o{ BUDGET : "설정"
+    CATEGORY ||--o{ TRANSACTION : "분류"
+    CATEGORY ||--o{ BUDGET : "목표"
+
+    USER {
+        Long id PK
+        String email
+        String password
+        String username
+    }
+    CATEGORY {
+        Long id PK
+        String name
+        String type
+    }
+    TRANSACTION {
+        Long id PK
+        Integer amount
+        String description
+        LocalDate transactionDate
+    }
+    BUDGET {
+        Long id PK
+        Integer limitAmount
+        Integer year
+        Integer month
+    }
+
+## 5. 트러블 슈팅 (Trouble Shooting)
+
+### 🚨 Issue 1: 로그인 직후 `/error?continue` 페이지로 이동되는 현상
+- **원인:** 브라우저의 `/favicon.ico` 요청이 404 에러를 일으켰고, Spring Security가 이 에러 페이지 접근을 차단하여 로그인 후 목적지를 `/error`로 덮어씌웠기 때문입니다.
+- **해결:** `SecurityConfig`에서 `/error`와 `/favicon.png`를 `permitAll()` 주소에 추가하여 보안 요원이 해당 요청을 간섭하지 않도록 수정했습니다.
+
+### 🚨 Issue 2: 공백(스페이스바) 입력 시 검증을 통과하는 문제
+- **원인:** `@NotEmpty`는 공백 문자(`" "`)를 길이가 1인 데이터로 인식하여 유령 회원이 생성되는 문제가 있었습니다.
+- **해결:** 양끝 공백을 제거하고 알맹이만 검사하는 **`@NotBlank`**로 DTO 어노테이션을 교체하여 데이터 무결성을 강화했습니다.
