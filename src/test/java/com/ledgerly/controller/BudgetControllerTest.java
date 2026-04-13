@@ -69,7 +69,7 @@ class BudgetControllerTest {
                         .with(user("test@test.com").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("budget/list"))
-                .andExpect(model().attributeExists("budgets", "categories"));
+                .andExpect(model().attributeExists("budgetStatuses", "categories"));
     }
 
     @Test

@@ -66,12 +66,12 @@ class TransactionControllerTest {
     void newTransactionPage_unauthenticated_redirectToLogin() throws Exception {
         mockMvc.perform(get("/transactions/new"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrlPattern("**/login"));
+                .andExpect(redirectedUrl("http://localhost/login"));
     }
 
     @Test
     @DisplayName("로그인 시 거래 내역 등록 페이지 정상 접근")
-    void newTranactionPage_authenticated_success() throws Exception {
+    void newTransactionPage_authenticated_success() throws Exception {
         mockMvc.perform(get("/transactions/new")
                         .with(user("test@test.com").roles("USER")))
                 .andExpect(status().isOk())

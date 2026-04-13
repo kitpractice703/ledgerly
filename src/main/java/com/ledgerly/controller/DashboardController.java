@@ -59,6 +59,7 @@ public class DashboardController {
         model.addAttribute("balance", totalIncome - totalExpense);
         model.addAttribute("year", year);
         model.addAttribute("month", month);
+        model.addAttribute("budgetStatuses", budgetStatuses);
 
         return "dashboard";
     }
