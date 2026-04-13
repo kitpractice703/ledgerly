@@ -1,65 +1,72 @@
-💰 Ledgerly (개인 맞춤형 스마트 가계부)
+# 💰 Ledgerly (개인 맞춤형 스마트 가계부)
 
-1. 프로젝트 소개
-   Ledgerly는 단순한 수입/지출 기록을 넘어, 사용자가 카테고리별로 월 예산을 설정하고 지출을 통제할 수 있도록 돕는 스마트 가계부 웹 애플리케이션입니다.
-   데이터의 무결성과 보안을 최우선으로 고려하여, 사용자 간의 데이터 격리와 철저한 폼 데이터 검증(Validation)을 구현하는 데 집중했습니다.
+> **개발 기간:** 2026.03 ~ 
+> **한 줄 소개:** 단순 기록을 넘어 예산 통제 기능을 제공하는 백엔드 중심 가계부 프로젝트
 
-2. 기술 스택 (Tech Stack)
-   Backend: Java 17, Spring Boot 3.x, Spring Data JPA, Spring Security, Validation
+---
 
-Frontend: Thymeleaf, HTML5/CSS3
+## 1. 프로젝트 소개
+**Ledgerly**는 사용자가 카테고리별로 월 예산을 설정하고 지출을 관리할 수 있는 **스프링 부트 기반 가계부 서비스**입니다.  
+단순한 데이터 저장을 넘어, 사용자 간 데이터 격리와 철저한 유효성 검증(Validation)을 통한 데이터 무결성 확보에 집중했습니다.
 
-Database: MySQL (Production), H2 (Test)
+## 2. 기술 스택 (Tech Stack)
+### 🖥 Backend
+- **Language:** Java 17
+- **Framework:** Spring Boot 3.5.13
+- **Security:** Spring Security (인증/인가, BCrypt 암호화)
+- **Data:** Spring Data JPA, Hibernate
+- **Validation:** Jakarta Bean Validation (DTO 검증)
 
-Deployment: Cloudtype
+### 🎨 Frontend
+- **Template Engine:** Thymeleaf
+- **Styling:** CSS3
 
-3. 핵심 기능 (Key Features)
-   안전한 회원 관리: Spring Security를 활용한 비밀번호 암호화 및 인증/인가 처리.
+### 💾 Database & Infra
+- **DB:** MySQL (운영), H2 (테스트용 인메모리 DB)
+- **Deployment:** Cloudtype
 
-사용자 데이터 완벽 격리 (보안 강화): \* 내역 수정 및 삭제 시, 단순히 ID만 조회하는 것이 아니라 로그인한 사용자와 데이터의 주인이 일치하는지(!transaction.getUser().getId().equals(user.getId())) 교차 검증하여 IDOR(안전하지 않은 직접 객체 참조) 보안 취약점을 차단했습니다.
+---
 
-월별 예산 통제 시스템:
+## 3. 핵심 기능 및 설계 디테일
+### ✅ 데이터 보안 및 무결성
+- **IDOR 보안 취약점 방어:** 모든 내역 수정/삭제 시 로그인한 사용자의 ID와 데이터 소유자의 ID를 대조하여 타인의 데이터 접근을 원천 차단했습니다.
+- **Fail-Fast 검증:** DTO와 `@Valid`를 활용하여 컨트롤러 입구에서 부적절한 데이터(공백, 이메일 형식 오류 등)를 즉시 차단합니다.
 
-특정 카테고리(예: 식비)에 월 예산을 설정하면, 해당 월의 지출 합계를 계산하여 예산 초과 여부(Exceeded)를 대시보드에 직관적으로 표시합니다.
+### ✅ 스마트 예산 관리
+- **예산 초과 알림:** 카테고리별 예산 대비 현재 지출 합계를 계산하여, 초과 시 대시보드에서 직관적인 경고 아이콘을 표시합니다.
+- **유연한 카테고리:** 수입과 지출 유형을 구분하여 사용자가 직접 카테고리를 관리할 수 있습니다.
 
-입구 컷 데이터 검증 (Fail-Fast):
+---
 
-DTO와 @Valid, BindingResult를 활용하여 비정상적인 데이터가 DB에 도달하기 전에 컨트롤러 단에서 즉시 에러를 반환하도록 설계하여 서버 자원을 절약했습니다.
+## 4. 데이터베이스 구조 (ERD)
+```mermaid
+erDiagram
+    USER ||--o{ TRANSACTION : "작성"
+    USER ||--o{ BUDGET : "설정"
+    CATEGORY ||--o{ TRANSACTION : "분류"
+    CATEGORY ||--o{ BUDGET : "목표"
 
-4. ERD (Entity Relationship) 구조
-   User: 회원 정보 (이메일, 비밀번호 암호화 등)
+    USER {
+        Long id PK
+        String email
+        String password
+        String username
+    }
+    CATEGORY {
+        Long id PK
+        String name
+        String type
+    }
+    TRANSACTION {
+        Long id PK
+        Integer amount
+        String description
+        LocalDate transactionDate
+    }
+    BUDGET {
+        Long id PK
+        Integer limitAmount
+        Integer year
+        Integer month
+    }
 
-Category: 수입/지출 카테고리 분류
-
-Transaction: 실제 거래 내역 (금액, 날짜, 메모 등)
-
-Budget: 사용자가 월별/카테고리별로 설정한 목표 예산 한도
-
-🌟 5. 트러블 슈팅 (Trouble Shooting)
-🚨 Issue 1: 로그인 성공 직후 /error?continue 페이지로 튕기는 현상
-
-문제 상황: 서버를 띄우고 처음 로그인을 시도하면 정상적인 대시보드가 아니라 에러 코드가 없는 /error?continue 페이지로 이동하는 버그가 발생했습니다.
-
-원인 분석 (Why?):
-
-웹 브라우저는 탭 창에 띄울 아이콘을 찾기 위해 서버에 몰래 /favicon.ico를 요청합니다.
-
-서버에 해당 파일이 없어서 404 에러가 발생했고, 스프링 부트는 내부적으로 /error 페이지로 경로를 이동시킵니다.
-
-이때 Spring Security가 개입하여 "어? /error 페이지는 권한이 없으니 로그인부터 해!"라며 사용자의 원래 목적지를 /error로 메모리에 저장해 둡니다.
-
-로그인이 성공하자마자 시큐리티가 저장해 둔 목적지(/error)로 강제 이동시켜 발생한 문제였습니다.
-
-해결 방법: \* SecurityConfig 파일의 접근 권한 설정(requestMatchers)에 /error와 /favicon.ico를 추가하여 permitAll() 처리를 해주었습니다. 브라우저의 숨은 요청이 시큐리티의 감시망을 무사히 통과하게 되어 원래 원했던 대시보드로 정상 로그인되도록 해결했습니다.
-
-🚨 Issue 2: 공백(스페이스바)만 입력해도 회원가입이 통과되는 데이터 무결성 문제
-
-문제 상황: 회원가입 기능 테스트 중, 이름(Username) 칸에 스페이스바만 입력하고 가입을 눌렀는데 에러 없이 그대로 DB에 '유령 회원'으로 저장되는 것을 발견했습니다.
-
-원인 분석 (Why?):
-
-처음에는 DTO 검증 어노테이션으로 @NotNull과 @NotEmpty를 사용했습니다. 하지만 이 둘은 "데이터 자체가 안 왔거나(null)", "글자 길이가 0"일 때만 막아줍니다.
-
-자바 메모리 구조상 스페이스바 딱 1칸(" ")도 엄연히 길이가 1인 정상적인 문자열로 취급되기 때문에 이 검문소를 바보같이 통과해버린 것입니다.
-
-해결 방법: \* 문자열을 입력받는 DTO 필드에 무조건 **@NotBlank**를 사용하도록 전면 수정했습니다. @NotBlank는 입력된 문자열의 양옆 공백(스페이스)을 싹 다 잘라낸 뒤 남은 진짜 알맹이가 있는지 검사하는 가장 강력한 검증 기능입니다. 이를 통해 쓸모없는 쓰레기 데이터가 DB에 들어가는 것을 원천 차단했습니다.
