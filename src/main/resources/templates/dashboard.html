@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Ledgerly - 대시보드</title>
+    <link rel="icon" type="image/png" href="/favicon.png"/>
+    <style>
+        body { font-family: sans-serif; margin: 0; background: #f5f5f5; }
+        .header { background: #4CAF50; color: white; padding: 16px 32px;
+                  display: flex; justify-content: space-between; align-items: center; }
+        .container { max-width: 900px; margin: 32px auto; padding: 0 16px; }
+        .summary { display: flex; gap: 16px; margin-bottom: 32px; }
+        .card { background: white; border-radius: 8px; padding: 24px;
+                flex: 1; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }
+        .card h3 { margin: 0 0 8px; font-size: 14px; color: #666; }
+        .card p { margin: 0; font-size: 24px; font-weight: bold; }
+        .income { color: #2196F3; }
+        .expense { color: #f44336; }
+        .balance { color: #4CAF50; }
+        .section { background: white; border-radius: 8px; padding: 24px;
+                   box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .section-header { display: flex; justify-content: space-between;
+                          align-items: center; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px; background: #f9f9f9;
+             border-bottom: 2px solid #eee; font-size: 14px; }
+        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .badge-income { background: #e3f2fd; color: #1976D2; }
+        .badge-expense { background: #fce4ec; color: #c62828; }
+        .btn { padding: 8px 16px; border-radius: 4px; border: none;
+               cursor: pointer; font-size: 14px; text-decoration: none; }
+        .btn-primary { background: #4CAF50; color: white; }
+        .btn-danger { background: #f44336; color: white; font-size: 12px; padding: 4px 8px; }
+        .month-nav { display: flex; align-items: center; gap: 12px; }
+        .empty { text-align: center; color: #999; padding: 40px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h2 style="margin:0">💰 Ledgerly</h2>
+    <div style="display:flex; gap:16px; align-items:center">
+        <a th:href="@{/categories}" style="color:white; text-decoration:none">카테고리 관리</a>
+        <a th:href="@{/budgets}" style="color:white; text-decoration:none">예산 관리</a>
+        <form th:action="@{/logout}" method="post" style="margin:0">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit" style="background:transparent; border:1px solid white;
+                    color:white; padding:6px 12px; border-radius:4px; cursor:pointer">
+                로그아웃
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- 월 네비게이션 -->
+    <div class="month-nav" style="margin-bottom:24px">
+        <a th:href="@{/dashboard(year=${month == 1 ? year - 1 : year}, month=${month == 1 ? 12 : month - 1})}"
+           class="btn" style="background:#eee">◀ 이전달</a>
+        <h2 style="margin:0" th:text="${year} + '년 ' + ${month} + '월'"></h2>
+        <a th:href="@{/dashboard(year=${month == 12 ? year + 1 : year}, month=${month == 12 ? 1 : month + 1})}"
+           class="btn" style="background:#eee">다음달 ▶</a>
+    </div>
+
+    <!-- 수입/지출/잔액 요약 카드 -->
+    <div class="summary">
+        <div class="card">
+            <h3>총 수입</h3>
+            <p class="income" th:text="'₩' + ${#numbers.formatInteger(totalIncome, 0, 'COMMA')}"></p>
+        </div>
+        <div class="card">
+            <h3>총 지출</h3>
+            <p class="expense" th:text="'₩' + ${#numbers.formatInteger(totalExpense, 0, 'COMMA')}"></p>
+        </div>
+        <div class="card">
+            <h3>잔액</h3>
+            <p class="balance" th:text="'₩' + ${#numbers.formatInteger(balance, 0, 'COMMA')}"></p>
+        </div>
+    </div>
+
+    <!-- 예산 현황 섹션 -->
+    <div class="section" th:if="${!#lists.isEmpty(budgetStatuses)}"
+         style="margin-bottom: 24px;">
+        <h3 style="margin:0 0 16px">예산 현황</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>카테고리</th>
+                <th>예산</th>
+                <th>지출</th>
+                <th>잔여</th>
+                <th>상태</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="status : ${budgetStatuses}">
+                <td th:text="${status.budget.category.name}"></td>
+                <td th:text="'₩' + ${#numbers.formatInteger(status.budget.limitAmount, 0, 'COMMA')}"></td>
+                <td th:text="'₩' + ${#numbers.formatInteger(status.spentAmount, 0, 'COMMA')}"></td>
+                <td th:style="${status.exceeded} ? 'color:#f44336; font-weight:bold;' : 'color:#4CAF50;'"
+                    th:text="'₩' + ${#numbers.formatInteger(status.remaining, 0, 'COMMA')}"></td>
+                <td>
+                    <span th:if="${status.exceeded}">🔴 초과</span>
+                    <span th:if="${!status.exceeded}">✅ 안전</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 거래 내역 테이블 -->
+    <div class="section">
+        <div class="section-header">
+            <h3 style="margin:0">거래 내역</h3>
+            <a th:href="@{/transactions/new}" class="btn btn-primary">+ 내역 추가</a>
+        </div>
+
+        <div class="empty" th:if="${#lists.isEmpty(transactions)}">
+            이번 달 거래 내역이 없습니다.
+        </div>
+
+        <table th:if="${!#lists.isEmpty(transactions)}">
+            <thead>
+            <tr>
+                <th>날짜</th>
+                <th>카테고리</th>
+                <th>메모</th>
+                <th>구분</th>
+                <th>금액</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="tx : ${transactions}">
+                <td th:text="${tx.transactionDate}"></td>
+                <td th:text="${tx.category.name}"></td>
+                <td th:text="${tx.description}"></td>
+                <td>
+                        <span class="badge"
+                              th:classappend="${tx.type == 'INCOME'} ? 'badge-income' : 'badge-expense'"
+                              th:text="${tx.type == 'INCOME'} ? '수입' : '지출'">
+                        </span>
+                </td>
+                <td th:text="'₩' + ${#numbers.formatInteger(tx.amount, 0, 'COMMA')}"></td>
+                <td style="display:flex; gap:4px;">
+                    <a th:href="@{/transactions/{id}/edit(id=${tx.id})}"
+                       class="btn" style="background:#2196F3; color:white; font-size:12px; padding:4px 8px;">수정</a>
+                    <form th:action="@{/transactions/{id}/delete(id=${tx.id})}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                        <button type="submit" class="btn btn-danger"
+                                onclick="return confirm('삭제하시겠습니까?')">삭제
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

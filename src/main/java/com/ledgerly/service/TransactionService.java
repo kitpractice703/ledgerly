@@ -1,0 +1,117 @@
+package com.ledgerly.service;
+
+import com.ledgerly.domain.Category;
+import com.ledgerly.domain.Transaction;
+import com.ledgerly.domain.User;
+import com.ledgerly.repository.TransactionRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class TransactionService {
+
+    private final TransactionRepository transactionRepository;
+    private final CategoryService categoryService;
+
+    @Transactional
+    public Transaction save(
+            User user,
+            Long categoryId,
+            Integer amount,
+            String description,
+            String type,
+            LocalDate date
+    ) {
+        Category category = categoryService.findById(categoryId);
+
+        Transaction transaction = new Transaction();
+        transaction.setUser(user);
+        transaction.setCategory(category);
+        transaction.setAmount(amount);
+        transaction.setDescription(description);
+        transaction.setType(type);
+        transaction.setTransactionDate(date);
+
+        return transactionRepository.save(transaction);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Transaction> findByUserAndMonth(User user, int year, int month) {
+        LocalDate startDate = LocalDate.of(year, month, 1);
+        LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+
+        return transactionRepository
+                .findByUserAndTransactionDateBetweenOrderByTransactionDateDesc(
+                        user, startDate, endDate
+                );
+    }
+
+    @Transactional(readOnly = true)
+    public Transaction findById(Long transactionId, User user) {
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 거래 내역입니다."));
+
+        // 타인의 거래 내역 접근 시도 차단
+        if (!transaction.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("접근 권한이 없습니다.");
+        }
+        return transaction;
+    }
+
+    @Transactional
+    public void update(Long transactionId, User user, Long categoryId,
+                       Integer amount, String description, String type, LocalDate transactionDate) {
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 거래 내역입니다."));
+
+        // 타인의 거래 내역 수정 시도 차단
+        if (!transaction.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("수정 권한이 없습니다.");
+        }
+
+        Category category = categoryService.findById(categoryId);
+        transaction.setCategory(category);
+        transaction.setAmount(amount);
+        transaction.setDescription(description);
+        transaction.setType(type);
+        transaction.setTransactionDate(transactionDate);
+    }
+
+    @Transactional
+    public void delete(Long transactionId, User user) {
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 거래 내역입니다."));
+
+        // 타인의 거래 내역 삭제 시도 차단
+        if (!transaction.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("삭제 권한이 없습니다.");
+        }
+
+        transactionRepository.delete(transaction);
+    }
+
+    @Transactional(readOnly = true)
+    public int sumByUserAndCategoryAndMonth(
+            User user,
+            Long categoryId,
+            String type,
+            int year,
+            int month
+    ) {
+        LocalDate startDate = LocalDate.of(year, month, 1);
+        LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+
+        Integer sum = transactionRepository.sumAmountByUserAndCategoryAndTypeDateBetween(
+                user, categoryId, type, startDate, endDate
+        );
+
+        return sum != null ? sum : 0; // 대상 거래가 없으면 SUM 결과가 null이므로 0으로 치환
+    }
+
+
+}
