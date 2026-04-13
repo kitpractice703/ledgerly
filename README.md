@@ -69,6 +69,9 @@ erDiagram
         Integer year
         Integer month
     }
+```
+
+---
 
 ## 5. 트러블 슈팅 (Trouble Shooting)
 
