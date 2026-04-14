@@ -87,8 +87,15 @@ public class BudgetController {
             budgetService.save(user, dto.getCategoryId(), dto.getLimitAmount(), dto.getYear(), dto.getMonth());
             return "redirect:/budgets";
         } catch (IllegalArgumentException e) {
+            int year = dto.getYear() != null ? dto.getYear() : LocalDate.now().getYear();
+            int month = dto.getMonth() != null ? dto.getMonth() : LocalDate.now().getMonthValue();
+            List<BudgetStatusDto> budgetStatuses = budgetService.findBudgetStatusByUserAndMonth(user, year, month);
+
             model.addAttribute("error", e.getMessage());
+            model.addAttribute("budgetStatuses", budgetStatuses);
             model.addAttribute("categories", categoryService.findAll());
+            model.addAttribute("year", year);
+            model.addAttribute("month", month);
             return "budget/list";
         }
     }
