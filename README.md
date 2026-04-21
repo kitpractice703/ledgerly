@@ -94,18 +94,21 @@ CATEGORY ||--o{ TRANSACTION : "1:N"
 
 ### 🚨 Issue 1: 로그인 직후 `/error?continue` 페이지로 이동되는 현상
 
-| | 내용 |
-|------|------|
-| **원인 (로컬)** | 브라우저의 `/favicon.ico` 요청이 404를 일으키고, Spring Security가 해당 에러 페이지 접근을 차단하여 로그인 후 목적지를 `/error`로 덮어씌움 |
-| **해결 (로컬)** | `SecurityConfig`에서 `/favicon.png`를 `permitAll()`에 추가 |
-| **원인 (운영)** | `defaultSuccessUrl`의 `alwaysUse`가 기본값 `false`이면 로그인 전 접근했던 URL로 리다이렉트 → `/login?continue`로 진입 후 로그인 성공 시 다시 `/login?continue`로 돌아가고, 이미 인증된 상태이므로 `/error?continue`로 튕기는 순환 발생 |
-| **해결 (운영)** | `defaultSuccessUrl("/dashboard", true)`로 변경 → 로그인 성공 시 항상 `/dashboard`로 고정 |
+**로컬 환경**
+
+- **원인:** 브라우저의 `/favicon.ico` 요청이 404를 일으키고, Spring Security가 해당 에러 페이지 접근을 차단하여 로그인 후 목적지를 `/error`로 덮어씌움
+- **해결:** `SecurityConfig`에서 `/favicon.png`를 `permitAll()`에 추가
+
+**운영 서버**
+
+- **원인:** `defaultSuccessUrl`의 `alwaysUse`가 기본값 `false`이면 로그인 전 접근했던 URL로 리다이렉트됨.
+  서버에서 `/login?continue`로 진입 후 로그인 성공 시 다시 `/login?continue`로 돌아가고,
+  이미 인증된 상태이므로 `/error?continue`로 튕기는 순환 발생
+- **해결:** `defaultSuccessUrl("/dashboard", true)`로 변경하여 로그인 성공 시 항상 `/dashboard`로 고정
 
 ---
 
 ### 🚨 Issue 2: 공백(스페이스바) 입력 시 검증을 통과하는 문제
 
-| | 내용 |
-|------|------|
-| **원인** | `@NotEmpty`는 공백 문자(`" "`)를 길이 1인 유효한 값으로 인식하여 공백만 입력해도 회원가입이 처리됨 |
-| **해결** | `@NotBlank`로 교체 — 앞뒤 공백을 제거한 후 빈 값인지 검사하여 공백 단독 입력 차단 |
+- **원인:** `@NotEmpty`는 공백 문자(`" "`)를 길이 1인 유효한 값으로 인식하여 공백만 입력해도 회원가입이 처리됨
+- **해결:** `@NotBlank`로 교체 — 앞뒤 공백을 제거한 후 빈 값인지 검사하여 공백 단독 입력 차단
