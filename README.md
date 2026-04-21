@@ -24,7 +24,7 @@
 ### 🎨 Frontend & DB
 
 - **Template Engine:** Thymeleaf
-- **Database:** MySQL (운영), H2 (테스트용 인메모리 DB)
+- **Database:** MariaDB (운영), H2 (테스트용 인메모리 DB)
 - **Deployment:** Cloudtype
 
 ---
@@ -94,12 +94,18 @@ CATEGORY ||--o{ TRANSACTION : "1:N"
 
 ### 🚨 Issue 1: 로그인 직후 `/error?continue` 페이지로 이동되는 현상
 
-- **원인 1 (로컬):** 브라우저의 `/favicon.ico` 요청이 404 에러를 일으켰고, Spring Security가 이 에러 페이지 접근을 차단하여 로그인 후 목적지를 `/error`로 덮어씌웠기 때문입니다.
-- **해결 1:** `SecurityConfig`에서 `/error`와 `/favicon.png`를 `permitAll()` 주소에 추가하여 보안 요원이 해당 요청을 간섭하지 않도록 수정했습니다.
-- **원인 2 (운영 서버):** `defaultSuccessUrl("/dashboard")`의 두 번째 파라미터 `alwaysUse`가 기본값 `false`일 때, Spring Security는 로그인 전 접근하려던 URL로 리다이렉트합니다. 서버에서 `/login?continue` 형태로 로그인 페이지에 진입한 경우, 로그인 성공 후 `/login?continue`로 다시 돌아가고 이미 인증된 상태이므로 `/error?continue`로 튕기는 순환이 발생했습니다.
-- **해결 2:** `defaultSuccessUrl("/dashboard", true)`로 `alwaysUse = true`를 명시하여 로그인 성공 시 항상 `/dashboard`로 이동하도록 고정했습니다.
+| | 내용 |
+|------|------|
+| **원인 (로컬)** | 브라우저의 `/favicon.ico` 요청이 404를 일으키고, Spring Security가 해당 에러 페이지 접근을 차단하여 로그인 후 목적지를 `/error`로 덮어씌움 |
+| **해결 (로컬)** | `SecurityConfig`에서 `/favicon.png`를 `permitAll()`에 추가 |
+| **원인 (운영)** | `defaultSuccessUrl`의 `alwaysUse`가 기본값 `false`이면 로그인 전 접근했던 URL로 리다이렉트 → `/login?continue`로 진입 후 로그인 성공 시 다시 `/login?continue`로 돌아가고, 이미 인증된 상태이므로 `/error?continue`로 튕기는 순환 발생 |
+| **해결 (운영)** | `defaultSuccessUrl("/dashboard", true)`로 변경 → 로그인 성공 시 항상 `/dashboard`로 고정 |
+
+---
 
 ### 🚨 Issue 2: 공백(스페이스바) 입력 시 검증을 통과하는 문제
 
-- **원인:** `@NotEmpty`는 공백 문자(`" "`)를 길이가 1인 데이터로 인식하여 유령 회원이 생성되는 문제가 있었습니다.
-- **해결:** 양끝 공백을 제거하고 알맹이만 검사하는 **`@NotBlank`**로 DTO 어노테이션을 교체하여 데이터 무결성을 강화했습니다.
+| | 내용 |
+|------|------|
+| **원인** | `@NotEmpty`는 공백 문자(`" "`)를 길이 1인 유효한 값으로 인식하여 공백만 입력해도 회원가입이 처리됨 |
+| **해결** | `@NotBlank`로 교체 — 앞뒤 공백을 제거한 후 빈 값인지 검사하여 공백 단독 입력 차단 |
