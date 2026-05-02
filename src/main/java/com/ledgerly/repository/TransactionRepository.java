@@ -30,6 +30,35 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+    @Query("SELECT MONTH(t.transactionDate), t.type, SUM(t.amount) FROM Transaction t " +
+            "WHERE t.user = :user AND YEAR(t.transactionDate) = :year " +
+            "GROUP BY MONTH(t.transactionDate), t.type " +
+            "ORDER BY MONTH(t.transactionDate)")
+    List<Object[]> findMonthlyTrend(
+            @Param("user") User user,
+            @Param("year") int year
+    );
+
+    @Query("SELECT t.category.name, SUM(t.amount) FROM Transaction t " +
+            "WHERE t.user = :user AND t.type = :type " +
+            "AND t.transactionDate BETWEEN :startDate AND :endDate " +
+            "GROUP BY t.category.id, t.category.name " +
+            "ORDER BY SUM(t.amount) DESC")
+    List<Object[]> findCategoryBreakdown(
+            @Param("user") User user,
+            @Param("type") String type,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    @Query("SELECT t.type, SUM(t.amount) FROM Transaction t " +
+            "WHERE t.user = :user AND YEAR(t.transactionDate) = :year " +
+            "GROUP BY t.type")
+    List<Object[]> findAnnualSummary(
+            @Param("user") User user,
+            @Param("year") int year
+    );
 }
 
 

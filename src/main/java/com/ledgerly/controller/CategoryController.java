@@ -1,58 +1,67 @@
 package com.ledgerly.controller;
 
+import com.ledgerly.domain.Category;
+import com.ledgerly.domain.User;
 import com.ledgerly.dto.CategoryRequestDto;
 import com.ledgerly.service.CategoryService;
+import com.ledgerly.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-@Controller
-@RequestMapping("/categories")
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/categories")
 @RequiredArgsConstructor
 public class CategoryController {
 
     private final CategoryService categoryService;
+    private final UserService userService;
 
     @GetMapping
-    public String categoryPage(Model model) {
-        model.addAttribute("categories", categoryService.findAll());
-        return "category/list";
+    public ResponseEntity<List<Category>> findAll(@AuthenticationPrincipal UserDetails userDetails) {
+        User user = userService.findByEmail(userDetails.getUsername());
+        return ResponseEntity.ok(categoryService.findAll(user));
     }
 
     @PostMapping
-    public String save(@Valid CategoryRequestDto dto,
-                       BindingResult bindingResult,
-                       Model model) {
+    public ResponseEntity<?> save(@AuthenticationPrincipal UserDetails userDetails,
+                                  @Valid @RequestBody CategoryRequestDto dto,
+                                  BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
-            model.addAttribute("errors", bindingResult.getAllErrors());
-            model.addAttribute("categories", categoryService.findAll());
-            return "category/list";
+            return ResponseEntity.badRequest()
+                    .body(bindingResult.getAllErrors().get(0).getDefaultMessage());
         }
-
-        try {
-            categoryService.save(dto.getName(), dto.getType());
-            return "redirect:/categories";
-        } catch (Exception e) {
-            model.addAttribute("error", "카테고리 등록에 실패했습니다.");
-            model.addAttribute("categories", categoryService.findAll());
-            return "category/list";
-        }
+        User user = userService.findByEmail(userDetails.getUsername());
+        categoryService.save(user, dto.getName(), dto.getType());
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-    @PostMapping("/{id}/update")
-    public String update(@PathVariable Long id,
-                         @RequestParam String name,
-                         @RequestParam String type) {
-        categoryService.update(id, name, type);
-        return "redirect:/categories";
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@AuthenticationPrincipal UserDetails userDetails,
+                                    @PathVariable Long id,
+                                    @Valid @RequestBody CategoryRequestDto dto,
+                                    BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return ResponseEntity.badRequest()
+                    .body(bindingResult.getAllErrors().get(0).getDefaultMessage());
+        }
+        User user = userService.findByEmail(userDetails.getUsername());
+        categoryService.update(id, user, dto.getName(), dto.getType());
+        return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/{id}/delete")
-    public String delete(@PathVariable Long id) {
-        categoryService.delete(id);
-        return "redirect:/categories";
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> delete(@AuthenticationPrincipal UserDetails userDetails,
+                                    @PathVariable Long id) {
+        User user = userService.findByEmail(userDetails.getUsername());
+        categoryService.delete(id, user);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -37,7 +37,7 @@ public class BudgetService {
             throw new IllegalArgumentException("이미 해당 카테고리의 예산이 존재합니다.");
         });
 
-        Category category = categoryService.findById(categoryId);
+        Category category = categoryService.findById(categoryId, user);
 
         Budget budget = new Budget();
         budget.setUser(user);

@@ -1,4 +1,4 @@
-# 1. 빌드 스테이지
+# 1단계: JAR 빌드 (JDK 필요)
 FROM eclipse-temurin:17-jdk-jammy AS builder
 WORKDIR /build
 
@@ -10,7 +10,7 @@ COPY src src
 RUN chmod +x ./gradlew
 RUN ./gradlew bootJar -x test
 
-# 2. 실행 스테이지
+# 2단계: 실행 이미지 (JRE만 포함 - 경량화)
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 

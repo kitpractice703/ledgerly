@@ -1,6 +1,7 @@
 package com.ledgerly.controller;
 
 import com.ledgerly.domain.Category;
+import com.ledgerly.domain.User;
 import com.ledgerly.repository.BudgetRepository;
 import com.ledgerly.repository.CategoryRepository;
 import com.ledgerly.repository.UserRepository;
@@ -12,48 +13,38 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class BudgetControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private UserService userService;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private CategoryRepository categoryRepository;
-
-    @Autowired
-    private BudgetRepository budgetRepository;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private UserService userService;
+    @Autowired private UserRepository userRepository;
+    @Autowired private CategoryRepository categoryRepository;
+    @Autowired private BudgetRepository budgetRepository;
 
     private Category testCategory;
 
     @BeforeEach
     void setUp() {
-        userService.register("test@test.com", "password123", "김인태");
+        User user = userService.register("test@test.com", "password123", "김인태");
 
         testCategory = new Category();
+        testCategory.setUser(user);
         testCategory.setName("식비");
         testCategory.setType("EXPENSE");
         categoryRepository.save(testCategory);
     }
-
 
     @AfterEach
     void tearDown() {
@@ -63,64 +54,56 @@ class BudgetControllerTest {
     }
 
     @Test
-    @DisplayName("예산 관리 페이지 정상 접근")
-    void budgetPage_authenticated_success() throws Exception {
-        mockMvc.perform(get("/budgets")
+    @DisplayName("비인증 요청 시 401 반환")
+    void getBudgets_unauthenticated_returns401() throws Exception {
+        mockMvc.perform(get("/api/budgets"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("인증 사용자 예산 조회 성공")
+    void getBudgets_authenticated_returns200() throws Exception {
+        mockMvc.perform(get("/api/budgets")
                         .with(user("test@test.com").roles("USER")))
-                .andExpect(status().isOk())
-                .andExpect(view().name("budget/list"))
-                .andExpect(model().attributeExists("budgetStatuses", "categories"));
+                .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("예산 등록 성공 시 리다이렉트")
-    void saveBudget_success_redirectToBudgets() throws Exception {
-        mockMvc.perform(post("/budgets")
-                        .with(csrf())
+    @DisplayName("예산 등록 성공 시 201 반환")
+    void saveBudget_success_returns201() throws Exception {
+        String body = String.format(
+                "{\"categoryId\":%d,\"limitAmount\":300000,\"year\":2026,\"month\":4}",
+                testCategory.getId()
+        );
+
+        mockMvc.perform(post("/api/budgets")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .with(user("test@test.com").roles("USER"))
-                        .param("categoryId", testCategory.getId().toString())
-                        .param("limitAmount", "300000")
-                        .param("year", "2026")
-                        .param("month", "4"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/budgets"));
+                        .content(body))
+                .andExpect(status().isCreated());
 
         assertThat(budgetRepository.count()).isEqualTo(1);
     }
 
     @Test
-    @DisplayName("같은 카테고리 예산 중복 등록 시 에러 메시지 반환")
-    void saveBudget_duplicate_returnsError() throws Exception {
-        // given
-        mockMvc.perform(post("/budgets")
-                .with(csrf())
+    @DisplayName("같은 카테고리 예산 중복 등록 시 400 반환")
+    void saveBudget_duplicate_returns400() throws Exception {
+        String body = String.format(
+                "{\"categoryId\":%d,\"limitAmount\":300000,\"year\":2026,\"month\":4}",
+                testCategory.getId()
+        );
+
+        mockMvc.perform(post("/api/budgets")
+                .contentType(MediaType.APPLICATION_JSON)
                 .with(user("test@test.com").roles("USER"))
-                .param("categoryId", testCategory.getId().toString())
-                .param("limitAmount", "300000")
-                .param("year", "2026")
-                .param("month", "4"));
+                .content(body));
 
-        // when
-        mockMvc.perform(post("/budgets")
-                        .with(csrf())
+        mockMvc.perform(post("/api/budgets")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .with(user("test@test.com").roles("USER"))
-                        .param("categoryId", testCategory.getId().toString())
-                        .param("limitAmount", "500000")
-                        .param("year", "2026")
-                        .param("month", "4"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("budget/list"))
-                .andExpect(model().attributeExists("error"));
+                        .content(body))
+                .andExpect(status().isBadRequest());
 
-        // then
         assertThat(budgetRepository.count()).isEqualTo(1);
-    }
-
-    @Test
-    @DisplayName("비로그인 시 예산 페이지 접근 불가")
-    void budgetPage_unauthenticated_redirectToLogin() throws Exception {
-        mockMvc.perform(get("/budgets"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("http://localhost/login"));
     }
 }

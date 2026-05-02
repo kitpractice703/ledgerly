@@ -8,15 +8,18 @@ import com.ledgerly.service.TransactionService;
 import com.ledgerly.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-@Controller
-@RequestMapping("/transactions")
+import java.time.LocalDate;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/transactions")
 @RequiredArgsConstructor
 public class TransactionController {
 
@@ -24,68 +27,66 @@ public class TransactionController {
     private final CategoryService categoryService;
     private final UserService userService;
 
-    @GetMapping("/new")
-    public String newTransactionPage(Model model) {
-        model.addAttribute("categories", categoryService.findAll());
-        return "transaction/form";
+    @GetMapping
+    public ResponseEntity<List<Transaction>> findAll(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String type) {
+        User user = userService.findByEmail(userDetails.getUsername());
+        int y = year != null ? year : LocalDate.now().getYear();
+        return ResponseEntity.ok(transactionService.findByUserWithFilters(user, y, month, categoryId, type));
     }
 
     @PostMapping
-    public String save(@AuthenticationPrincipal UserDetails userDetails,
-                       @Valid TransactionRequestDto dto,
-                       BindingResult bindingResult,
-                       Model model) {
-
+    public ResponseEntity<?> save(@AuthenticationPrincipal UserDetails userDetails,
+                                  @Valid @RequestBody TransactionRequestDto dto,
+                                  BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
-            model.addAttribute("errors", bindingResult.getAllErrors());
-            model.addAttribute("categories", categoryService.findAll());
-            return "transaction/form";
+            return ResponseEntity.badRequest()
+                    .body(bindingResult.getAllErrors().get(0).getDefaultMessage());
         }
 
         User user = userService.findByEmail(userDetails.getUsername());
-        transactionService.save(user, dto.getCategoryId(), dto.getAmount(), dto.getDescription(), dto.getType(), dto.getTransactionDate());
+        Transaction transaction = transactionService.save(
+                user, dto.getCategoryId(), dto.getAmount(),
+                dto.getDescription(), dto.getType(), dto.getTransactionDate()
+        );
 
-        return "redirect:/dashboard";
+        return ResponseEntity.status(HttpStatus.CREATED).body(transaction);
     }
 
-    @GetMapping("/{id}/edit")
-    public String editTransactionPage(@AuthenticationPrincipal UserDetails userDetails,
-                                      @PathVariable Long id,
-                                      Model model) {
+    @GetMapping("/{id}")
+    public ResponseEntity<?> findById(@AuthenticationPrincipal UserDetails userDetails,
+                                      @PathVariable Long id) {
         User user = userService.findByEmail(userDetails.getUsername());
         Transaction transaction = transactionService.findById(id, user);
-        model.addAttribute("transaction", transaction);
-        model.addAttribute("categories", categoryService.findAll());
-        return "transaction/edit";
+        return ResponseEntity.ok(transaction);
     }
 
-    @PostMapping("/{id}/update")
-    public String update(@AuthenticationPrincipal UserDetails userDetails,
-                         @PathVariable Long id,
-                         @Valid TransactionRequestDto dto,
-                         BindingResult bindingResult,
-                         Model model) {
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@AuthenticationPrincipal UserDetails userDetails,
+                                    @PathVariable Long id,
+                                    @Valid @RequestBody TransactionRequestDto dto,
+                                    BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
-            User user = userService.findByEmail(userDetails.getUsername());
-            model.addAttribute("transaction", transactionService.findById(id, user));
-            model.addAttribute("categories", categoryService.findAll());
-            model.addAttribute("errors", bindingResult.getAllErrors());
-            return "transaction/edit";
+            return ResponseEntity.badRequest()
+                    .body(bindingResult.getAllErrors().get(0).getDefaultMessage());
         }
 
         User user = userService.findByEmail(userDetails.getUsername());
         transactionService.update(id, user, dto.getCategoryId(), dto.getAmount(),
                 dto.getDescription(), dto.getType(), dto.getTransactionDate());
-        return "redirect:/dashboard";
+
+        return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/{id}/delete")
-    public String delete(@AuthenticationPrincipal UserDetails userDetails,
-                         @PathVariable Long id) {
-
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> delete(@AuthenticationPrincipal UserDetails userDetails,
+                                    @PathVariable Long id) {
         User user = userService.findByEmail(userDetails.getUsername());
         transactionService.delete(id, user);
-
-        return "redirect:/dashboard";
+        return ResponseEntity.noContent().build();
     }
 }

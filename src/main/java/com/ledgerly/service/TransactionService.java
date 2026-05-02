@@ -27,7 +27,7 @@ public class TransactionService {
             String type,
             LocalDate date
     ) {
-        Category category = categoryService.findById(categoryId);
+        Category category = categoryService.findById(categoryId, user);
 
         Transaction transaction = new Transaction();
         transaction.setUser(user);
@@ -74,7 +74,7 @@ public class TransactionService {
             throw new IllegalArgumentException("수정 권한이 없습니다.");
         }
 
-        Category category = categoryService.findById(categoryId);
+        Category category = categoryService.findById(categoryId, user);
         transaction.setCategory(category);
         transaction.setAmount(amount);
         transaction.setDescription(description);
@@ -93,6 +93,25 @@ public class TransactionService {
         }
 
         transactionRepository.delete(transaction);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Transaction> findByUserWithFilters(User user, int year, Integer month, Long categoryId, String type) {
+        LocalDate startDate, endDate;
+        if (month != null) {
+            startDate = LocalDate.of(year, month, 1);
+            endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+        } else {
+            startDate = LocalDate.of(year, 1, 1);
+            endDate = LocalDate.of(year, 12, 31);
+        }
+
+        return transactionRepository
+                .findByUserAndTransactionDateBetweenOrderByTransactionDateDesc(user, startDate, endDate)
+                .stream()
+                .filter(t -> categoryId == null || t.getCategory().getId().equals(categoryId))
+                .filter(t -> type == null || type.isBlank() || t.getType().equals(type))
+                .toList();
     }
 
     @Transactional(readOnly = true)

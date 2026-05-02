@@ -50,7 +50,7 @@ class TransactionServiceTest {
     @DisplayName("거래 내역 정상 등록")
     void save_success() {
         // given
-        when(categoryService.findById(1L)).thenReturn(testCategory);
+        when(categoryService.findById(1L, testUser)).thenReturn(testCategory);
         when(transactionRepository.save(any(Transaction.class)))
                 .thenAnswer(i -> i.getArgument(0));
 

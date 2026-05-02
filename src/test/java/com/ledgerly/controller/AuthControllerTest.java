@@ -7,12 +7,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -33,53 +32,54 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("로그인 페이지 정상 접근")
-    void loginPage_success() throws Exception {
-        mockMvc.perform(get("/login"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("auth/login"));
-    }
-
-    @Test
-    @DisplayName("회원가입 페이지 정상 접근")
-    void registerPage_success() throws Exception {
-        mockMvc.perform(get("/register"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("auth/register"));
-    }
-
-    @Test
-    @DisplayName("회원가입 성공시 로그인 페이지로 리다이렉트")
-    void register_success_redirectToLogin() throws Exception {
-        mockMvc.perform(post("/register")
-                        .with(csrf())
-                        .param("email", "test@test.com")
-                        .param("password", "password123")
-                        .param("username", "김인태"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login"));
+    @DisplayName("회원가입 성공 시 201 반환")
+    void register_success() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"test@test.com\",\"password\":\"password123\",\"username\":\"김인태\"}"))
+                .andExpect(status().isCreated());
 
         assertThat(userRepository.existsByEmail("test@test.com")).isTrue();
     }
 
     @Test
-    @DisplayName("이메일 중복 시 회원가입 페이지로 돌아옴")
-    void register_duplicateEmail_returnsRegisterPage() throws Exception {
-        // given
-        mockMvc.perform(post("/register")
-                .with(csrf())
-                .param("email", "test@test.com")
-                .param("password", "password123")
-                .param("username", "김인태"));
+    @DisplayName("이메일 중복 시 400 반환")
+    void register_duplicateEmail_returns400() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"test@test.com\",\"password\":\"password123\",\"username\":\"김인태\"}"));
 
-        // when
-        mockMvc.perform(post("/register")
-                        .with(csrf())
-                        .param("email", "test@test.com")
-                        .param("password", "password456")
-                        .param("username", "홍길동"))
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"test@test.com\",\"password\":\"password456\",\"username\":\"홍길동\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("로그인 성공 시 JWT 토큰 반환")
+    void login_success_returnsToken() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"test@test.com\",\"password\":\"password123\",\"username\":\"김인태\"}"));
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"test@test.com\",\"password\":\"password123\"}"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("auth/register"))
-                .andExpect(model().attributeExists("error"));
+                .andExpect(jsonPath("$.token").exists())
+                .andExpect(jsonPath("$.email").value("test@test.com"));
+    }
+
+    @Test
+    @DisplayName("잘못된 비밀번호로 로그인 시 401 반환")
+    void login_wrongPassword_returns401() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"test@test.com\",\"password\":\"password123\",\"username\":\"김인태\"}"));
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"test@test.com\",\"password\":\"wrongpassword\"}"))
+                .andExpect(status().isUnauthorized());
     }
 }
