@@ -25,4 +25,9 @@ public class Category {
 
     @Column(nullable = false)
     private String type;
+
+    @Transient
+    public boolean isDefault() {
+        return user == null;
+    }
 }

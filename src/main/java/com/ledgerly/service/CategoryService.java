@@ -26,25 +26,27 @@ public class CategoryService {
 
     @Transactional(readOnly = true)
     public List<Category> findAll(User user) {
-        return categoryRepository.findByUser(user);
+        return categoryRepository.findByUserOrUserIsNull(user);
     }
 
     @Transactional(readOnly = true)
     public Category findById(Long id, User user) {
-        return categoryRepository.findByIdAndUser(id, user)
+        return categoryRepository.findByIdAndUserOrDefault(id, user)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 카테고리입니다."));
     }
 
     @Transactional
     public void update(Long id, User user, String name, String type) {
-        Category category = findById(id, user);
+        Category category = categoryRepository.findByIdAndUser(id, user)
+                .orElseThrow(() -> new IllegalArgumentException("수정 권한이 없습니다."));
         category.setName(name);
         category.setType(type);
     }
 
     @Transactional
     public void delete(Long id, User user) {
-        Category category = findById(id, user);
+        Category category = categoryRepository.findByIdAndUser(id, user)
+                .orElseThrow(() -> new IllegalArgumentException("삭제 권한이 없습니다."));
         categoryRepository.delete(category);
     }
 }
