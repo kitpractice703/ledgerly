@@ -3,6 +3,10 @@
 > **개발 기간:** 2026.03 ~
 >
 > **한 줄 소개:** JWT 인증 기반의 RESTful 개인 가계부 백엔드 — 예산 통제·리포트·사용자 데이터 격리에 집중한 프로젝트
+>
+> **🔗 라이브 데모:** https://ledgerly-kit.netlify.app
+>
+> **🔗 프론트엔드 저장소:** https://github.com/kitpractice703/ledgerly-frontend
 
 ---
 

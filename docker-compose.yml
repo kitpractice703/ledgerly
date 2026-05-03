@@ -3,6 +3,7 @@ services:
   db:
     image: mysql:8.0
     container_name: ledgerly-db
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ledgerly
@@ -21,6 +22,7 @@ services:
   app:
     build: .
     container_name: ledgerly-app
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
@@ -34,6 +36,7 @@ services:
   nginx:
     image: nginx:alpine
     container_name: ledgerly-nginx
+    restart: unless-stopped
     ports:
       - "80:80"
     volumes:
