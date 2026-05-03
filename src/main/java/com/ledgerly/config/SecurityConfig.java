@@ -58,9 +58,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
-                "http://localhost:5173",   // Vite 로컬 개발 서버
-                "https://your-netlify-app.netlify.app"  // TODO: Netlify 배포 URL로 교체
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:5173",
+                "https://*.netlify.app"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
