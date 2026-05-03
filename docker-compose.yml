@@ -1,17 +1,17 @@
 services:
 
   db:
-    image: mariadb:10.11
+    image: mysql:8.0
     container_name: ledgerly-db
     environment:
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MARIADB_DATABASE: ledgerly
-      MARIADB_USER: ${DB_USERNAME}
-      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ledgerly
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - mariadb_data:/var/lib/mysql  # 컨테이너 재시작 시에도 데이터 유지
+      - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -21,9 +21,9 @@ services:
     container_name: ledgerly-app
     depends_on:
       db:
-        condition: service_healthy  # DB 초기화 완료 후 앱 기동 (단순 depends_on은 시작 순서만 보장)
+        condition: service_healthy
     environment:
-      DB_URL: jdbc:mariadb://db:3306/ledgerly?serverTimezone=Asia/Seoul
+      DB_URL: jdbc:mysql://db:3306/ledgerly?serverTimezone=Asia/Seoul
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
@@ -34,12 +34,10 @@ services:
     container_name: ledgerly-nginx
     ports:
       - "80:80"
-      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro  # Let's Encrypt 인증서 마운트
     depends_on:
       - app
 
 volumes:
-  mariadb_data:
+  mysql_data:
