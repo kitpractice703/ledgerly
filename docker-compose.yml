@@ -8,6 +8,8 @@ services:
       MYSQL_DATABASE: ledgerly
       MYSQL_USER: ${DB_USERNAME}
       MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "127.0.0.1:3306:3306"  # 서버 내부에서만 접근 가능 (외부 인터넷 차단)
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
